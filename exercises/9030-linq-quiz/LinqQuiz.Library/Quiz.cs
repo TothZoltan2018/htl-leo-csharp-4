@@ -7,6 +7,14 @@ namespace LinqQuiz.Library
 {
     public static class Quiz
     {
+        public static IEnumerable<int> GenerateNums(int exclusiveUpperLimit)
+        {
+            for (int i = 1; i < exclusiveUpperLimit; i++)
+            {
+                yield return i;
+            }
+        }
+
         /// <summary>
         /// Returns all even numbers between 1 and the specified upper limit.
         /// </summary>
@@ -16,7 +24,8 @@ namespace LinqQuiz.Library
         /// </exception>
         public static int[] GetEvenNumbers(int exclusiveUpperLimit)
         {
-            throw new NotImplementedException();
+            if (exclusiveUpperLimit < 1) throw new ArgumentOutOfRangeException();
+            return GenerateNums(exclusiveUpperLimit).Where(i => i % 2 == 0).ToArray();            
         }
 
         /// <summary>
@@ -33,7 +42,10 @@ namespace LinqQuiz.Library
         /// </remarks>
         public static int[] GetSquares(int exclusiveUpperLimit)
         {
-            throw new NotImplementedException();
+            return checked( GenerateNums(exclusiveUpperLimit)
+                .Reverse()
+                .Where(n => n % 7 == 0)
+                .Select(x => x * x).ToArray() );
         }
 
         /// <summary>
@@ -52,7 +64,13 @@ namespace LinqQuiz.Library
         /// </remarks>
         public static FamilySummary[] GetFamilyStatistic(IReadOnlyCollection<IFamily> families)
         {
-            throw new NotImplementedException();
+            return families
+                .Select(fam => new FamilySummary { 
+                        FamilyID = fam.ID,
+                        NumberOfFamilyMembers = fam.Persons.Count(),
+                        AverageAge = fam.Persons.Count() != 0 ? fam.Persons.Select(pers => pers.Age).Average() : 0})
+                 .ToArray();
+                        
         }
 
         /// <summary>
@@ -70,7 +88,11 @@ namespace LinqQuiz.Library
         /// </remarks>
         public static (char letter, int numberOfOccurrences)[] GetLetterStatistic(string text)
         {
-            throw new NotImplementedException();
+            return text
+                .Where(c => char.IsUpper(c))
+                .GroupBy(c => c)
+                .Select(g => (g.Key, numberOfOccurrences: g.Count()))
+                .ToArray();
         }
     }
 }
