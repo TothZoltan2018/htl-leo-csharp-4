@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "OrderImport": {
-      "commandName": "Project",
-      "commandLineArgs": "import customers.txt orders.txt"
-    }
-  }
-}
