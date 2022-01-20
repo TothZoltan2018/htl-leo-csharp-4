@@ -1,4 +1,5 @@
 ﻿using ChuckNorrisExcercise.EFDataContext;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,65 +10,63 @@ namespace ChuckNorrisExcercise
 {
     public class DataOperations
     {
+        private const int maxAttemptToGetUniqueJoke = 50;
+        ChuckNorrisContextFactory factory = new ChuckNorrisContextFactory();
+        
         public async Task InsertToDB(int numberOfJokes)
         {
-            var factory = new ChuckNorrisContextFactory();
-            var chuckNorrisContext = factory.CreateDbContext();
+            using ChuckNorrisContext chuckNorrisContext = factory.CreateDbContext();
 
-            JokeData joke; // = new ();
-
-            // Algorithm 1.
-            // Get one joke.
-            // Check if categories does not contain "explicit" value AND it is uniqe in DB
-            // Get new joke if needed. Try max 10x.
-            // Write             
+            JokeData joke = new ();
+    
             int storedJokes = 0;
 
             while (storedJokes != numberOfJokes)
             {
                 int attemptCounter = 0;
-                while (attemptCounter < 10)
+                while (attemptCounter < maxAttemptToGetUniqueJoke)
                 {
-                    // timeout needed
-                    do
-                    { // while categories is NOT "explicit" Get a random joke
+                    bool isExplicit = true;
+                    while (isExplicit)
+                    {// 'Jokes in explicit' category will not be written into DB
+                        int nonExplicitAttempts = 1;
                         joke = await HttpStuff.GetHttpData();
-                    } while (joke.Categories.Contains("explicit"));
+                        isExplicit = joke.Categories.Contains("explicit");
+                        if (isExplicit) {
+                            Console.WriteLine($"For the {nonExplicitAttempts}. attempt the retrieved joke was in the category 'explicit'. Retreiving an other one." );
+                            nonExplicitAttempts++;
+                        }
+                    }
 
-                    if (chuckNorrisContext.JokeDatas.Where(d => d.ChuckNorrisId == joke.ChuckNorrisId).Count() == 0)
+                    if ( ! chuckNorrisContext.JokeDatas.Where(d => d.ChuckNorrisId == joke.ChuckNorrisId).Any())                    
                     { // Not in the DB yet, so insert it
                         chuckNorrisContext.JokeDatas.Add(joke);
                         await chuckNorrisContext.SaveChangesAsync();
                         storedJokes++;
+                        Console.WriteLine($"{storedJokes}. joke is iserted to DB.");
                         break;
                     }
                     else
                     {
                         attemptCounter++;
-                    }
-
-                    if (attemptCounter == 10)
-                    {
-                        Console.WriteLine($"It seems that all the jokes are retrived from the Webpage." +
-                            $"Exciting after retrieving {storedJokes}/{numberOfJokes} jokes");
-                    }
+                        Console.WriteLine($"!!!!!!!!!!! {attemptCounter}. attempt to get a unique joke !!!!!!!!!!!");
+                        if (attemptCounter == maxAttemptToGetUniqueJoke)
+                        {
+                            Console.WriteLine($"It seems that all the jokes are retrived from the Webpage." +
+                                $"Exiting after retrieving {storedJokes}/{numberOfJokes} jokes");
+                            return;
+                        }
+                    } 
                 }
             } 
+        }
 
-           
-            
+        public async Task Clear()
+        {
+            using ChuckNorrisContext chuckNorrisContext = factory.CreateDbContext();            
 
-
-
-
-
-
-
-            // Algorithm 2.
-            // Build a List<Jokes> in length of 'numberOfJokes' times which to be insert into DB:
-            //      Check each recently got joke if they are uniqe among the new ones AND categories does not contain "explicit" value. Also check each of them 
-            // Get new joke if needed. Try max 10x.
-            // Write 
+            await chuckNorrisContext.Database.ExecuteSqlRawAsync("DELETE FROM JokeDatas");
+            Console.WriteLine("All Data is cleared from DB. And that is not a joke!");
         }
     }
 }
