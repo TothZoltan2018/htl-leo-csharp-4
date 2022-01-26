@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace TournamentPlanner.Data
 {
@@ -6,9 +7,13 @@ namespace TournamentPlanner.Data
     {
         public int ID { get; set; }
 
+        [Required]
+        [Range(1, 5)]
         public int Round { get; set; }
 
-        // This class is NOT COMPLETE.
-        // Todo: Complete the class according to the requirements
+        [Required]
+        public List<Player> Players { get; set; } = new();
+
+        public Player Winner { get; set; }
     }
 }

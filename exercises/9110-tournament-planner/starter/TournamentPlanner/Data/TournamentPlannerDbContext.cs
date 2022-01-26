@@ -9,22 +9,25 @@ namespace TournamentPlanner.Data
     public enum PlayerNumber { Player1 = 1, Player2 = 2 };
 
     public class TournamentPlannerDbContext : DbContext
-    {
+    {        
         public TournamentPlannerDbContext(DbContextOptions<TournamentPlannerDbContext> options)
             : base(options)
         { }
 
-        // This class is NOT COMPLETE.
-        // Todo: Complete the class according to the requirements
+        public DbSet<Player> Players { get; set; }
+
+        public DbSet<Match> Matches { get; set; }
 
         /// <summary>
         /// Adds a new player to the player table
         /// </summary>
         /// <param name="newPlayer">Player to add</param>
         /// <returns>Player after it has been added to the DB</returns>
-        public Task<Player> AddPlayer(Player newPlayer)
+        public async Task<Player> AddPlayer(Player newPlayer)
         {
-            throw new NotImplementedException();
+            this.Add(newPlayer);
+            await this.SaveChangesAsync();
+            return newPlayer;
         }
 
         /// <summary>
@@ -34,9 +37,15 @@ namespace TournamentPlanner.Data
         /// <param name="player2Id">ID of player 2</param>
         /// <param name="round">Number of the round</param>
         /// <returns>Generated match after it has been added to the DB</returns>
-        public Task<Match> AddMatch(int player1Id, int player2Id, int round)
+        public async Task<Match> AddMatch(int player1Id, int player2Id, int round)
         {
-            throw new NotImplementedException();
+            Player player1 = await this.Players.FindAsync(player1Id);
+            Player player2 = await this.Players.FindAsync(player2Id);
+
+            Match match = new() { Players = new List<Player>() { player1, player2 }, Round = round };
+            this.Add(match);
+            await this.SaveChangesAsync();
+            return match;
         }
 
         /// <summary>
@@ -45,9 +54,14 @@ namespace TournamentPlanner.Data
         /// <param name="matchId">ID of the match to update</param>
         /// <param name="player">Player who has won the match</param>
         /// <returns>Match after it has been updated in the DB</returns>
-        public Task<Match> SetWinner(int matchId, PlayerNumber player)
+        public async Task<Match> SetWinner(int matchId, PlayerNumber player)
         {
-            throw new NotImplementedException();
+            Match match = await this.Matches.FindAsync(matchId);
+            match.Winner = await this.Players.FindAsync((int)player);
+
+            this.Matches.Update(match);
+            await this.SaveChangesAsync();
+            return match;
         }
 
         /// <summary>
@@ -62,9 +76,12 @@ namespace TournamentPlanner.Data
         /// <summary>
         /// Delete everything (matches, players)
         /// </summary>
-        public Task DeleteEverything()
+        public async Task DeleteEverything()
         {
-            throw new NotImplementedException();
+            this.Matches.RemoveRange(Matches);
+            this.Players.RemoveRange(Players);
+
+            await this.SaveChangesAsync();
         }
 
         /// <summary>
