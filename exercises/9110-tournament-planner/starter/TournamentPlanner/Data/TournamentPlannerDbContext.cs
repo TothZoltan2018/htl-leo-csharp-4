@@ -75,9 +75,10 @@ namespace TournamentPlanner.Data
         public async Task<IList<Match>> GetIncompleteMatches()
         {
             // todo player data missing
-            return await this.Matches                
+            return await this.Matches
+                .AsNoTracking()
                 .Where(m => m.Winner == null)
-                //.Include(m => m.Player1)
+                //.Include(m => m.Player1)                
                 .ToListAsync();
         }
 
@@ -112,11 +113,11 @@ namespace TournamentPlanner.Data
         {            
             if (playerFilter != null)
             {
-                return await this.Players.Where(p => p.Name.Contains(playerFilter)).ToListAsync();
+                return await this.Players.AsNoTracking().Where(p => p.Name.Contains(playerFilter)).ToListAsync();
             }
             else
             {
-                return await this.Players.ToListAsync();
+                return await this.Players.AsNoTracking().ToListAsync();
             }
         }
 
@@ -167,16 +168,14 @@ namespace TournamentPlanner.Data
 
                 if (nextRound == 1) // generate 16 matches between random players. Winner needs to be set?
                 {
-                    List<Player> players = await this.Players.ToListAsync();
+                    List<Player> players = await this.Players.AsNoTracking().ToListAsync();
                     int rndMax = 32;
                     await SetMatch(nextRound, r, players, rndMax);
 
                 }
                 else // generate matches between random winners of the previous round.
                 {
-                    var x = await this.Matches.Where(m => m.Round == nextRound - 1).ToListAsync();
-
-                    List<Player> players = await this.Matches
+                    List<Player> players = await this.Matches.AsNoTracking()
                         .Where(m => m.Round == nextRound - 1)
                         .Select(m => m.Winner).ToListAsync();
 
