@@ -11,9 +11,14 @@ namespace TournamentPlanner.Data
         [Range(1, 5)]
         public int Round { get; set; }
 
-        [Required]
-        public List<Player> Players { get; set; } = new();
+        [Required]        
+        public Player Player1 { get; set; } = new();       
 
-        public Player Winner { get; set; }
+        [Required]
+        public Player Player2 { get; set; } = new();
+       
+
+        public Player Winner { get; set; } = new();
+       
     }
 }
