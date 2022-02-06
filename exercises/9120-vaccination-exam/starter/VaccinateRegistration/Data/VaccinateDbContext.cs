@@ -24,23 +24,23 @@ namespace VaccinateRegistration.Data
 
         public DbSet<Registration> Registrations { get; set; }
 
+        // Not needed.
+//        protected override void OnModelCreating(ModelBuilder modelBuilder)
+//        {
+//            modelBuilder.Entity<Vaccination>()
+//                .HasOne(v => v.Registration)
+//#pragma warning disable CS8603 // Possible null reference return.
+//                .WithOne(r => r.Vaccination)
+//#pragma warning restore CS8603 // Possible null reference return.
+//                .OnDelete(DeleteBehavior.NoAction);
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<Vaccination>()
-                .HasOne(v => v.Registration)
-#pragma warning disable CS8603 // Possible null reference return.
-                .WithOne(r => r.Vaccination)
-#pragma warning restore CS8603 // Possible null reference return.
-                .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<Registration>()
-                .HasOne(r => r.Vaccination)
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                .WithOne(v => v.Registration)
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                .OnDelete(DeleteBehavior.NoAction);
-        }
+//            modelBuilder.Entity<Registration>()
+//                .HasOne(r => r.Vaccination)
+//#pragma warning disable CS8602 // Dereference of a possibly null reference.
+//                .WithOne(v => v.Registration)
+//#pragma warning restore CS8602 // Dereference of a possibly null reference.
+//                .OnDelete(DeleteBehavior.NoAction);
+//        }
 
         /// <summary>
         /// Import registrations from JSON file
@@ -54,10 +54,10 @@ namespace VaccinateRegistration.Data
             string registrationsJson = await File.ReadAllTextAsync(registrationsFileName);
             var registrations = JsonSerializer.Deserialize<IEnumerable<Registration>>(registrationsJson);
                         
-            await Database.BeginTransactionAsync();
+            using var transaction = await Database.BeginTransactionAsync();            
             await Registrations.AddRangeAsync(registrations);
             await SaveChangesAsync();
-            await Database.CommitTransactionAsync();
+            await transaction.CommitAsync();            
 
 #pragma warning disable CS8603 // Possible null reference return.
             return registrations;
@@ -69,10 +69,10 @@ namespace VaccinateRegistration.Data
         /// </summary>
         public async Task DeleteEverything()
         {
-            await Database.BeginTransactionAsync();
+            using var transaction = await Database.BeginTransactionAsync();
             await Database.ExecuteSqlRawAsync("DELETE FROM Registrations");
             await Database.ExecuteSqlRawAsync("DELETE FROM Vaccinations");
-            await Database.CommitTransactionAsync();
+            await transaction.CommitAsync();
         }
 
         /// <summary>
