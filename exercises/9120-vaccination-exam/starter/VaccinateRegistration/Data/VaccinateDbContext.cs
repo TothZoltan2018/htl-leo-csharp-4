@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -13,13 +14,33 @@ namespace VaccinateRegistration.Data
     public record GetRegistrationResult(int Id, long Ssn, string FirstName, string LastName);
 
     public record StoreVaccination(int RegistrationId, DateTime Datetime);
-
+    
+    
     public class VaccinateDbContext : DbContext
     {
         public VaccinateDbContext(DbContextOptions<VaccinateDbContext> options) : base(options) { }
 
-        // This class is NOT COMPLETE.
-        // Todo: Complete the class according to the requirements
+        public DbSet<Vaccination> Vaccinations { get; set; }
+
+        public DbSet<Registration> Registrations { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Vaccination>()
+                .HasOne(v => v.Registration)
+#pragma warning disable CS8603 // Possible null reference return.
+                .WithOne(r => r.Vaccination)
+#pragma warning restore CS8603 // Possible null reference return.
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Registration>()
+                .HasOne(r => r.Vaccination)
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                .WithOne(v => v.Registration)
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                .OnDelete(DeleteBehavior.NoAction);
+        }
 
         /// <summary>
         /// Import registrations from JSON file
@@ -28,17 +49,30 @@ namespace VaccinateRegistration.Data
         /// <returns>
         /// Collection of all imported registrations
         /// </returns>
-        public Task<IEnumerable<Registration>> ImportRegistrations(string registrationsFileName)
+        public async Task<IEnumerable<Registration>> ImportRegistrations(string registrationsFileName)
         {
-            throw new NotImplementedException();
+            string registrationsJson = await File.ReadAllTextAsync(registrationsFileName);
+            var registrations = JsonSerializer.Deserialize<IEnumerable<Registration>>(registrationsJson);
+                        
+            await Database.BeginTransactionAsync();
+            await Registrations.AddRangeAsync(registrations);
+            await SaveChangesAsync();
+            await Database.CommitTransactionAsync();
+
+#pragma warning disable CS8603 // Possible null reference return.
+            return registrations;
+#pragma warning restore CS8603 // Possible null reference return.
         }
 
         /// <summary>
         /// Delete everything (registrations, vaccinations)
         /// </summary>
-        public Task DeleteEverything()
+        public async Task DeleteEverything()
         {
-            throw new NotImplementedException();
+            await Database.BeginTransactionAsync();
+            await Database.ExecuteSqlRawAsync("DELETE FROM Registrations");
+            await Database.ExecuteSqlRawAsync("DELETE FROM Vaccinations");
+            await Database.CommitTransactionAsync();
         }
 
         /// <summary>
@@ -49,9 +83,16 @@ namespace VaccinateRegistration.Data
         /// <returns>
         /// Registration result or null if no registration with given SSN and PIN was found.
         /// </returns>
-        public Task<GetRegistrationResult?> GetRegistration(long ssn, int pin)
+        public async Task<GetRegistrationResult?> GetRegistration(long ssn, int pin)
         {
-            throw new NotImplementedException();
+            var reg = await Registrations//.Include(r => r.Vaccination)
+                .Where(r => r.SocialSecurityNumber == ssn && r.PinCode == pin)
+                .SingleOrDefaultAsync();
+            if (reg.FirstName != "")
+            {// If valid value was found
+                return new(reg.Id, ssn, reg.FirstName, reg.LastName);                
+            }
+            return null;            
         }
 
         /// <summary>
@@ -61,9 +102,31 @@ namespace VaccinateRegistration.Data
         /// <returns>
         /// Collection of all available time slots
         /// </returns>
-        public Task<IEnumerable<DateTime>> GetTimeslots(DateTime date)
+        public async Task<IEnumerable<DateTime>> GetTimeslots(DateTime date)
         {
-            throw new NotImplementedException();
+            var freeSLots = GenerateTimeslotsOnADay(date);
+            // substract the slots already are in the DB.
+            await Vaccinations.ForEachAsync(v => freeSLots.Remove(v.VaccinationDate));
+ 
+            return freeSLots;
+        }
+
+        private List<DateTime> GenerateTimeslotsOnADay(DateTime date)
+        {
+            List<DateTime> timeSlots = new();
+
+            var startTime = date.AddHours(8);// 8 AM
+            
+            timeSlots.Add(startTime);
+            var endTime = startTime.AddMinutes(165);// 10:45 AM
+
+            while (timeSlots.Last()< endTime)
+            {
+                var newSlot = timeSlots.Last().Add(TimeSpan.FromMinutes(15));
+                timeSlots.Add(newSlot);
+            }
+
+            return timeSlots;
         }
 
         /// <summary>
@@ -77,9 +140,19 @@ namespace VaccinateRegistration.Data
         /// If a vaccination with the given vaccination.RegistrationID already exists,
         /// overwrite it. Otherwise, insert a new vaccination.
         /// </remarks>
-        public  Task<Vaccination> StoreVaccination(StoreVaccination vaccination)
+        public async Task<Vaccination> StoreVaccination(StoreVaccination vaccination)
         {
-            throw new NotImplementedException();
+            var vaccinationEntry = await Vaccinations.Where(v => v.RegistrationId == vaccination.RegistrationId).SingleOrDefaultAsync();
+            
+            if (vaccinationEntry == null) // Not yet in DB            
+                vaccinationEntry = new Vaccination { RegistrationId = vaccination.RegistrationId, VaccinationDate = vaccination.Datetime };            
+            else
+                vaccinationEntry.VaccinationDate = vaccination.Datetime;
+
+            Vaccinations.Update(vaccinationEntry);
+            await SaveChangesAsync();
+
+            return vaccinationEntry;
         }
     }
 }

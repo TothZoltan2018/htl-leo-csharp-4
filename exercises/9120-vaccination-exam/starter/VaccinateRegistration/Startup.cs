@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi.Models;
 using VaccinateRegistration.Data;
 
 namespace VaccinateRegistration
@@ -17,14 +18,19 @@ namespace VaccinateRegistration
 
         public void ConfigureServices(IServiceCollection services)
         {
-            // Note: This method is NOT COMPLETE.
-            // Todo: Complete the class according to the requirements
+            services.AddDbContext<VaccinateDbContext>(options => options.UseSqlServer(
+               Configuration["ConnectionStrings:DefaultConnection"]));
+            
+            //services.AddCors(options => options.AddDefaultPolicy(builder =>
+            //    builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
             services.AddControllers();
         }
-
+            
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            //app.UseCors();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

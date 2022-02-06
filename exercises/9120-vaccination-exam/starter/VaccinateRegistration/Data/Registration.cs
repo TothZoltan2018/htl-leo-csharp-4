@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace VaccinateRegistration.Data
@@ -20,8 +21,7 @@ namespace VaccinateRegistration.Data
         [JsonPropertyName("lastName")]
         [MaxLength(100)]
         public string LastName { get; set; } = string.Empty;
-
-        // This class is NOT COMPLETE.
-        // Todo: Complete the class according to the requirements
+        
+        public Vaccination? Vaccination { get; set; } = null;
     }
 }
